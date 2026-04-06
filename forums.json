@@ -1,0 +1,40 @@
+[
+    {
+        "slug": "forum_slug_name",
+        "name": "Forum_name",
+        "mirrors": [
+            "http://anytorforumonionmirror.onion/",
+            "https://anytorforumclearnetmirror.club/"
+        ],
+        "selector_engine": "css",
+        "link_extraction": {
+            "container_selector": "",
+            "link_selector": ".node-title a, .structItem-title a",
+            "url_attribute": "href"
+        },
+        "post_extraction": {
+            "post_container_selector": ".message",
+            "author_selector": ".message-name",
+            "content_selector": ".message-userContent",
+            "date_selector": ".u-dt"
+        },
+        "pagination": {
+            "next_page_selector": "a.pageNav-jump--next",
+            "url_attribute": "href"
+        },
+        "auth": {
+            "enabled": true,
+            "login_url": "/login/",
+            "post_url": "/login/login",
+            "username_field": "login",
+            "password_field": "password",
+            "username": "ENV_FORUMNAME1_USER",
+            "password": "ENV_FORUMNAME1_PASS",
+            "csrf_selector": "input[name='_xfToken']::attr(value)",
+            "csrf_field_name": "_xfToken",
+            "cookies": {
+                "xf_session": "ENV_FORUMNAME1_COOKIE_SESSION"
+            }
+        }
+    }
+]

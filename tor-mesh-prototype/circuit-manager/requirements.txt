@@ -1,0 +1,4 @@
+stem==1.8.2
+APScheduler==3.10.4
+flask==3.0.0
+typing-extensions==4.9.0

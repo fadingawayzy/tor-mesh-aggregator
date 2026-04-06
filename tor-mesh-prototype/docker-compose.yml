@@ -1,0 +1,176 @@
+networks:
+  tor_mesh:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  tor1_data:
+  tor2_data:
+  tor_cookies:
+  aggregator_data:
+
+
+x-security: &security
+  cap_drop: [ ALL ]
+  cap_add: [ NET_BIND_SERVICE, SETUID, SETGID ]
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  environment:
+    - TZ=UTC
+  logging:
+    driver: json-file
+    options:
+      max-size: "5m"
+      max-file: "2"
+
+x-tor-resources: &tor-resources
+  deploy:
+    resources:
+      limits:
+        cpus: "0.50"
+        memory: 256M
+      reservations:
+        cpus: "0.10"
+        memory: 64M
+
+services:
+  tor1:
+    <<: [ *security, *tor-resources ]
+    build:
+      context: .
+      dockerfile: tor1/Dockerfile
+    container_name: tor_node_1
+    hostname: tor1
+    networks:
+      tor_mesh:
+        ipv4_address: 172.28.0.10
+    volumes:
+      - tor1_data:/var/lib/tor
+      - tor_cookies:/var/run/tor/cookies
+    environment:
+      - TOR_CONTROL_PASSWORD=${TOR_CONTROL_PASSWORD}
+      - TOR_CONTROL_PASSWORD_HASH=${TOR_CONTROL_PASSWORD_HASH}
+      - NODE_ID=1
+      - SOCKS_PORT=9050
+      - CONTROL_PORT=9051
+    healthcheck:
+      test: [ "CMD", "bash", "/usr/local/bin/healthcheck_tor.sh" ]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+      start_period: 40s
+
+  tor2:
+    <<: [ *security, *tor-resources ]
+    build:
+      context: .
+      dockerfile: tor2/Dockerfile
+    container_name: tor_node_2
+    hostname: tor2
+    networks:
+      tor_mesh:
+        ipv4_address: 172.28.0.11
+    volumes:
+      - tor2_data:/var/lib/tor
+      - tor_cookies:/var/run/tor/cookies
+    environment:
+      - TOR_CONTROL_PASSWORD=${TOR_CONTROL_PASSWORD}
+      - TOR_CONTROL_PASSWORD_HASH=${TOR_CONTROL_PASSWORD_HASH}
+      - NODE_ID=2
+      - SOCKS_PORT=9052
+      - CONTROL_PORT=9053
+    healthcheck:
+      test: [ "CMD", "bash", "/usr/local/bin/healthcheck_tor.sh" ]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+      start_period: 40s
+
+  privoxy1:
+    <<: *security
+    build:
+      context: .
+      dockerfile: privoxy/Dockerfile
+    container_name: privoxy1
+    hostname: privoxy1
+    networks:
+      tor_mesh:
+        ipv4_address: 172.28.0.20
+    depends_on:
+      tor1:
+        condition: service_healthy
+    environment:
+      - TOR_HOST=172.28.0.10
+      - TOR_PORT=9050
+    ports:
+      - "8118:8118"
+
+  privoxy2:
+    <<: *security
+    build:
+      context: .
+      dockerfile: privoxy/Dockerfile
+    container_name: privoxy2
+    hostname: privoxy2
+    networks:
+      tor_mesh:
+        ipv4_address: 172.28.0.21
+    depends_on:
+      tor2:
+        condition: service_healthy
+    environment:
+      - TOR_HOST=172.28.0.11
+      - TOR_PORT=9052
+    ports:
+      - "8119:8118"
+
+  circuit-manager:
+    <<: *security
+    build:
+      context: .
+      dockerfile: circuit-manager/Dockerfile
+    container_name: circuit_manager
+    hostname: circuit-manager
+    networks:
+      tor_mesh:
+        ipv4_address: 172.28.0.30
+    depends_on:
+      tor1:
+        condition: service_healthy
+      tor2:
+        condition: service_healthy
+    volumes:
+      - tor_cookies:/var/run/tor/cookies:ro
+    environment:
+      - TOR1_HOST=172.28.0.10
+      - TOR1_CONTROL_PORT=9051
+      - TOR2_HOST=172.28.0.11
+      - TOR2_CONTROL_PORT=9053
+      - TOR_CONTROL_PASSWORD=${TOR_CONTROL_PASSWORD}
+    ports:
+      - "9999:9999"
+
+  aggregator:
+    build:
+      context: ../
+      dockerfile: tor-mesh-prototype/aggregator.Dockerfile
+    container_name: forum_aggregator
+    networks:
+      tor_mesh:
+        ipv4_address: 172.28.0.40
+    depends_on:
+      - privoxy1
+      - privoxy2
+    volumes:
+      - aggregator_data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_PATH=/app/data/aggregator.db
+      - PROXY_POOL=http://172.28.0.20:8118,http://172.28.0.21:8118
+      - MAX_CONCURRENT_TASKS=1
+      - CRAWL_INTERVAL_MINUTES=10
+      - LOG_LEVEL=DEBUG

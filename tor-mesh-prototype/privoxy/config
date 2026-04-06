@@ -1,0 +1,25 @@
+listen-address  0.0.0.0:8118
+max-client-connections 128
+
+forward-socks5t .onion __TOR1_HOST__:__TOR1_PORT__ .
+forward-socks5t /     __TOR1_HOST__:__TOR1_PORT__ .
+
+allow-access 172.28.0.0/24
+allow-access 127.0.0.1
+
+hide-if-modified-since 1
+overwrite-last-modified 1
+hide-from-header block
+send-server-favicon 0
+
+toggle 0
+enable-remote-toggle 0
+enable-remote-http-toggle 0
+enable-edit-actions 0
+enable-compression 0
+
+socket-timeout 120
+
+logdir /var/log/privoxy
+logfile privoxy.log
+debug 0

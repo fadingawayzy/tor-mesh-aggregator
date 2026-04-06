@@ -1,0 +1,52 @@
+DataDirectory /var/lib/tor
+PidFile /tmp/tor1.pid
+
+Log notice stdout
+SafeLogging 1
+
+SocksPort 0.0.0.0:9050 \
+    IsolateClientAddr \
+    IsolateSOCKSAuth \
+    IsolateClientProtocol \
+    IsolateDestPort \
+    IsolateDestAddr
+
+SocksPolicy accept 127.0.0.1
+SocksPolicy accept 172.28.0.0/24
+SocksPolicy reject *
+
+ControlPort 0.0.0.0:9051
+HashedControlPassword PLACEHOLDER
+CookieAuthentication 1
+CookieAuthFile /var/run/tor/cookies/tor1.cookie
+CookieAuthFileGroupReadable 1
+
+DNSPort 127.0.0.1:5353
+AutomapHostsOnResolve 1
+AutomapHostsSuffixes .onion,.exit
+VirtualAddrNetworkIPv4 10.192.0.0/10
+
+ClientUseIPv6 1
+ClientUseIPv4 1
+
+UseBridges 1
+ClientTransportPlugin webtunnel exec /usr/local/bin/lyrebird
+
+Bridge webtunnel [2001:db8:75a1:8038:7326:46ce:b078:370b]:443 2C9FF2DE2E07A722BCF233E607947241887FF295 url=https://app03.oneclickhost.eu/rTl1ijNSNKZzskFsMjNMRI0p ver=0.0.4
+Bridge webtunnel [2001:db8:1640:379c:ad30:db5f:bff5:37d0]:443 AF8F7548C886D6F53A652411DBB71D089517085A url=https://app05.oneclickhost.eu/alpfZGTB9FckCgOkOOA0OHlh ver=0.0.4
+
+
+
+NewCircuitPeriod 30
+MaxCircuitDirtiness 600
+CircuitBuildTimeout 120
+LearnCircuitBuildTimeout 1
+CircuitStreamTimeout 120
+
+UseEntryGuards 1
+NumEntryGuards 3
+
+MaxMemInQueues 128 MB
+NumCPUs 1
+
+StrictNodes 0
